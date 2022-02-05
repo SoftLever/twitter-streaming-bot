@@ -119,9 +119,16 @@ class ElonBot:
                     url = os.environ.get("DEFAULT_WEBHOOK")
                     message = os.environ.get("DEFAULT_MESSAGE")
 
-                print(f"Seconds Elapsed: {timelapse}\nUsing webhook: {url}")
+                print(f"Seconds Elapsed: {timelapse}")
 
-                return requests.post(url, data=message)
+                R = requests.post(url, data=message)
+
+                if R.status_code != 200:
+                    print(f"Failed to post '{message}' to {url}")
+                else:
+                    print(f"Posted '{message}' to {url}")
+
+                return
 
         return None
 
