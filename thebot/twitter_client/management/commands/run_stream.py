@@ -16,8 +16,9 @@ from twitter_client.models import Keyword, Webhook
 from twitter_client.management.utils.twitter_utils import create_headers, reset_twitter_subscription_rules
 from twitter_client.management.utils.utils import log
 
-from datetime import datetime
-from datetime import timezone
+from datetime import datetime, timezone
+import ntplib
+
 import time
 
 import math
@@ -104,7 +105,8 @@ class ElonBot:
             if re.search(keyword, t, flags=re.I) is not None:
                 log(f'Tweet matched pattern "{keyword}", buying corresponding ticker {ticker}')
 
-                utc_time = datetime.now(timezone.utc).replace(tzinfo=timezone.utc).timestamp()
+                # utc_time = datetime.now(timezone.utc).replace(tzinfo=timezone.utc).timestamp()
+                utc_time = ntplib.NTPClient().request('europe.pool.ntp.org').tx_time
                 tweet_time = datetime.strptime(tweet_json['data']['created_at'], "%Y-%m-%dT%H:%M:%S.%fZ").timestamp()
                 print(f"current system time (UTC): {utc_time}\ntweet time (UTC): {tweet_time}")
 

@@ -11,6 +11,7 @@ googleapis-common-protos==1.54.0
 grpcio==1.43.0
 grpcio-status==1.43.0
 idna==3.3
+ntplib==0.4.0
 proto-plus==1.19.9
 protobuf==3.19.4
 pyasn1==0.4.8
