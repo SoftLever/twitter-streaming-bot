@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <!-- Font Awesome  -->
+  <link
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css"
+    rel="stylesheet"
+  />
+  <!-- Google Fonts -->
+  <link
+    href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap"
+    rel="stylesheet"
+  />
+  <!-- MDB -->
+  <link
+    href="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/3.6.0/mdb.min.css"
+    rel="stylesheet"
+  />
+  <style type="text/css">
+    .wateva{
+      max-width: 200px;
+      max-height: 20px;
+    }
+    .form-outline{
+      margin: 5px;
+    }
+  </style>
+  <title>Radiology Twitter</title>
+</head>
+<body>
+  <section class="vh-100 gradient-custom">
+    <div class="container py-5 h-100">
+      <div class="row d-flex justify-content-center align-items-center h-100" style="overflow-y: scroll">
+        <div class="col col-xl-7">
+
+          <div class="card">
+            <div class="card-body p-5">
+
+              <!-- Tabs navs -->
+              <ul class="nav nav-tabs mb-4 pb-2" id="ex1" role="tablist">
+                <li class="nav-item" role="presentation">
+                  <a class="nav-link active" id="ex1-tab-1" data-mdb-toggle="tab" href="#ex1-tabs-1" role="tab"
+                    aria-controls="ex1-tabs-1" aria-selected="true">KEYWORDS</a>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <a class="nav-link" id="ex1-tab-2" data-mdb-toggle="tab" href="#ex1-tabs-2" role="tab"
+                    aria-controls="ex1-tabs-2" aria-selected="false">WEBHOOKS</a>
+                </li>
+                <!--
+                <li class="nav-item" role="presentation">
+                  <a class="nav-link" id="ex1-tab-3" data-mdb-toggle="tab" href="#ex1-tabs-3" role="tab"
+                    aria-controls="ex1-tabs-3" aria-selected="false">DOWNLOAD DATA</a>
+                </li>
+              -->
+              </ul>
+              <!-- Tabs navs -->
+
+              <!-- Tabs content -->
+              <div class="tab-content" id="ex1-content">
+                <div class="tab-pane fade show active" id="ex1-tabs-1" role="tabpanel" aria-labelledby="ex1-tab-1">
+
+                  <form method = "POST" action = "" class="d-flex justify-content-center align-items-center mb-4">
+                    {% csrf_token %}
+                    <div class="form-outline flex-fill">
+                      <input type="text" name="keyword" required class="form-control" />
+                      <label class="form-label" for="form2">Keyword</label>
+                      <!--<input type="text" name="ticker" required class="form-control" />-->
+                    </div>
+                    <div class="form-outline flex-fill">
+                      <input type="text" name="ticker" required class="form-control" />
+                      <label class="form-label" for="form2">Ticker</label>
+                    </div>
+                    <button type="submit" class="btn btn-info ms-2">Save</button>
+                  </form>
+
+                  <table class="table mb-4">
+                    <thead>
+                      <tr>
+                        <th scope="col"></th>
+                        <th scope="col">Keyword</th>
+                        <th scope="col">Ticker</th>
+                        <th scope="col">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id = "hashtags-list">
+                      {% if keywords %}
+                        {% for keyword in keywords %}
+                            {% if keyword.enabled %}
+                              <tr>
+                                <th scope="row">{{ keyword.id }}</th>
+                                <td>{{ keyword.name }}</td>
+                                <td>{{ keyword.ticker }}</td>
+                                <td>
+                                  <button class="btn btn-danger change-status" keyword_id = "{{ keyword.id }}" enable="False">Disable</button>
+                                </td>
+                              </tr>
+                            {% else %}
+                              <tr>
+                                <th scope="row">{{ keyword.id }}</th>
+                                <td>{{ keyword.name }}</td>
+                                <td>{{ keyword.ticker }}</td>
+                                <td>
+                                  <button class="btn btn-success ms-1 change-status" keyword_id = "{{ keyword.id }}" enable="True">Enable</button>
+                                </td>
+                              </tr>
+                            {% endif %}
+                        {% endfor %}
+                      {% else %}
+                        <tr>
+                          <td colspan="4">NO KEYWORDS</td>
+                        </tr>
+                      {% endif %}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div class="tab-pane fade" id="ex1-tabs-2" role="tabpanel" aria-labelledby="ex1-tab-2">
+                  <form method="POST" action="" class="justify-content-center align-items-center mb-4">
+                    {% csrf_token %}
+                    <div class="form-outline flex-fill">
+                      <label for="url">URL</label>
+                      <input type="text" name="url" id="url" class="form-control" required>
+                    </div>
+                    <div class="form-outline flex-fill">
+                      <label for="message">Message</label>
+                      <textarea class="form-control" id="message" name="message" rows="2" required></textarea>
+                    </div>
+                    <div class="form-outline flex-fill">
+                      <label for="from_time">Time (From)</label>
+                      <input type="text" name="from_time" id="from_time" class="form-control" required placeholder="time (from)">
+                    </div>
+                    <div class="form-outline flex-fill">
+                      <label for="from_time">Time (To)</label>
+                      <input type="text" name="to_time" id="to_time" class="form-control" required placeholder="time (from)">
+                    </div>
+                    <button style="margin: 10px;" class="btn btn-info ms-2" type="submit">Add Webhook</button>
+                  </form>
+
+
+                  <table class="table mb-4">
+                    <thead>
+                      <tr>
+                        <th scope="col"></th>
+                        <th scope="col">URL</th>
+                        <th scope="col">Message</th>
+                        <th scope="col">Time</th>
+                        <th scope="col">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id = "hashtags-list">
+                      {% if webhooks %}
+                        {% for webhook in webhooks %}
+                          <tr>
+                            <th scope="row">{{ webhook.id }}</th>
+                            <td class="wateva">{{ webhook.url }}</td>
+                            <td class="wateva">
+                              <textarea class="form-control" disabled rows="2">
+                                {{ webhook.message }}
+                              </textarea>
+                            </td>
+                            <td class="wateva">{{ webhook.timerange_lower}}s to {{ webhook.timerange_upper }}s</td>
+                            <td class="wateva">
+                              <button class="btn btn-danger delete-webhook" webhook_id = "{{ webhook.id }}">Delete</button>
+                            </td>
+                          </tr>
+                        {% endfor %}
+                      {% else %}
+                        <tr>
+                          <td colspan="4">NO HASHTAGS</td>
+                        </tr>
+                      {% endif %}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div class="tab-pane fade" id="ex1-tabs-3" role="tabpanel" aria-labelledby="ex1-tab-3">
+                </div>
+
+              </div>
+              <!-- Tabs content -->
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+</body>
+</html>
+
+<script
+  type="text/javascript"
+  src="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/3.6.0/mdb.min.js"
+></script>
+
+
+<!-- JQUERY -->
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+
+<script type="text/javascript">
+  $(".change-status").click(function () {
+    var status = $(this).attr("enable");
+    var id = $(this).attr("keyword_id");
+
+    $.ajax({
+      url: '',
+      data: {
+        'keyword_id': id,
+        'enabled': status
+      },
+      success : function(data){
+        location.reload();
+      }
+    });
+  });
+  $(".delete-webhook").click(function () {
+    var id = $(this).attr("webhook_id");
+
+    $.ajax({
+      url: '',
+      data: {
+        'webhook_id': id
+      },
+      success : function(data){
+        location.reload();
+      }
+    });
+  });
+</script>

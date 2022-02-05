@@ -1,0 +1,27 @@
+{% if hashtags %}
+  {% for hashtag in hashtags %}
+      {% if hashtag.enabled %}
+        <tr>
+          <th scope="row">hashtag.id</th>
+          <td>hashtag.name</td>
+          <td>hashtag.enabled</td>
+          <td>
+            <button type="submit" class="btn btn-success ms-1">Enable</button>
+          </td>
+        </tr>
+      {% else %}
+        <tr>
+          <th scope="row">hashtag.id</th>
+          <td>hashtag.name</td>
+          <td>hashtag.enabled</td>
+          <td>
+            <button type="submit" class="btn btn-danger">Disable</button>
+          </td>
+        </tr>
+      {% endif %}
+  {% endfor %}
+{% else %}
+  <tr>
+    <td colspan="4">NO HASHTAGS</td>
+  </tr>
+{% endif %}
