@@ -23,6 +23,8 @@ import time
 
 import math
 
+import requests
+
 
 class ElonBot:
     def __init__(self, user: str,
@@ -105,9 +107,14 @@ class ElonBot:
             if re.search(keyword, t, flags=re.I) is not None:
                 log(f'Tweet matched pattern "{keyword}", buying corresponding ticker {ticker}')
 
-                # utc_time = datetime.now(timezone.utc).replace(tzinfo=timezone.utc).timestamp()
-                utc_time = ntplib.NTPClient().request('europe.pool.ntp.org').tx_time
+                utc_time = datetime.now(timezone.utc).replace(tzinfo=timezone.utc).timestamp()
+                # utc_time = ntplib.NTPClient().request('europe.pool.ntp.org').tx_time
+                # utc_time = datetime.strptime(
+                #     requests.get('http://worldtimeapi.org/api/timezone/Europe/London.txt').text.split("\n")[2][10:],
+                #     "%Y-%m-%dT%H:%M:%S.%f%z"
+                # ).timestamp()
                 tweet_time = datetime.strptime(tweet_json['data']['created_at'], "%Y-%m-%dT%H:%M:%S.%fZ").timestamp()
+
                 print(f"current system time (UTC): {utc_time}\ntweet time (UTC): {tweet_time}")
 
                 timelapse = math.ceil(utc_time - tweet_time)
