@@ -17,6 +17,7 @@ from twitter_client.management.utils.twitter_utils import create_headers, reset_
 from twitter_client.management.utils.utils import log
 
 from datetime import datetime
+from datetime import timezone
 import time
 
 import math
@@ -102,8 +103,10 @@ class ElonBot:
             t = unidecode(full_text)
             if re.search(keyword, t, flags=re.I) is not None:
                 log(f'Tweet matched pattern "{keyword}", buying corresponding ticker {ticker}')
-                # Make API call
-                timelapse = math.ceil(time.time() - datetime.strptime(tweet_json['data']['created_at'], "%Y-%m-%dT%H:%M:%S.%fZ").timestamp())
+
+                utc_time = datetime.now(timezone.utc).replace(tzinfo=timezone.utc).timestamp()
+
+                timelapse = math.ceil(utc_time - datetime.strptime(tweet_json['data']['created_at'], "%Y-%m-%dT%H:%M:%S.%fZ").timestamp())
 
                 # Get necessary API endpoint
                 webhook = Webhook.objects.filter(
@@ -120,6 +123,8 @@ class ElonBot:
                     message = os.environ.get("DEFAULT_MESSAGE")
 
                 print(f"Seconds Elapsed: {timelapse}")
+
+                # Make API call
 
                 R = requests.post(url, data=message)
 
