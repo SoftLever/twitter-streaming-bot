@@ -105,8 +105,10 @@ class ElonBot:
                 log(f'Tweet matched pattern "{keyword}", buying corresponding ticker {ticker}')
 
                 utc_time = datetime.now(timezone.utc).replace(tzinfo=timezone.utc).timestamp()
+                tweet_time = datetime.strptime(tweet_json['data']['created_at'], "%Y-%m-%dT%H:%M:%S.%fZ").timestamp()
+                print(f"current system time (UTC): {utc_time}\ntweet time (UTC): {tweet_time}")
 
-                timelapse = math.ceil(utc_time - datetime.strptime(tweet_json['data']['created_at'], "%Y-%m-%dT%H:%M:%S.%fZ").timestamp())
+                timelapse = math.ceil(utc_time - tweet_time)
 
                 # Get necessary API endpoint
                 webhook = Webhook.objects.filter(
@@ -117,10 +119,12 @@ class ElonBot:
                 if webhook:
                     url = webhook[0].url
                     message = webhook[0].message
+                    print(f"Range selected: {webhook[0].timerange_lower} to {webhook[0].timerange_upper}")
                 else:
                     # if there is no record for this time range, run default webhook
                     url = os.environ.get("DEFAULT_WEBHOOK")
                     message = os.environ.get("DEFAULT_MESSAGE")
+                    print("Range selected: Default")
 
                 print(f"Seconds Elapsed: {timelapse}")
 
@@ -129,9 +133,9 @@ class ElonBot:
                 R = requests.post(url, data=message)
 
                 if R.status_code != 200:
-                    print(f"Failed to post '{message}' to {url}")
+                    print(f"{R.status_code}:Failed to post '{message}' to {url}")
                 else:
-                    print(f"Posted '{message}' to {url}")
+                    print(f"{R.status_code}:Posted '{message}' to {url}")
 
                 return
 
