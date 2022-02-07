@@ -25,6 +25,8 @@ import math
 
 import requests
 
+import tweepy
+
 
 class ElonBot:
     def __init__(self, user: str,
@@ -93,7 +95,7 @@ class ElonBot:
     def process_tweet(self, tweet_json: str):
         tweet_json = json.loads(tweet_json)
         log("Tweet received\n", json.dumps(tweet_json, indent=4, sort_keys=True), "\n")
-        tweet_text = tweet_json['data']['text']
+        tweet_text = tweet_json['text']
         image_url = (tweet_json.get('includes', {}).get('media', [])[0:1] or [{}])[0].get('url', '')
         image_text = ''
         if self.use_image_signal:
@@ -108,12 +110,7 @@ class ElonBot:
                 log(f'Tweet matched pattern "{keyword}", buying corresponding ticker {ticker}')
 
                 utc_time = datetime.now(timezone.utc).replace(tzinfo=timezone.utc).timestamp()
-                # utc_time = ntplib.NTPClient().request('europe.pool.ntp.org').tx_time
-                # utc_time = datetime.strptime(
-                #     requests.get('http://worldtimeapi.org/api/timezone/Europe/London.txt').text.split("\n")[2][10:],
-                #     "%Y-%m-%dT%H:%M:%S.%f%z"
-                # ).timestamp()
-                tweet_time = datetime.strptime(tweet_json['data']['created_at'], "%Y-%m-%dT%H:%M:%S.%fZ").timestamp()
+                tweet_time = datetime.strptime(tweet_json['created_at'], "%a %b %d %H:%M:%S %z %Y").timestamp()
 
                 print(f"current system time (UTC): {utc_time}\ntweet time (UTC): {tweet_time}")
 
@@ -154,15 +151,19 @@ class ElonBot:
         if self.process_tweet_text is not None:
             self.process_tweet(self.process_tweet_text)
             return
-        reset_twitter_subscription_rules(self.user)
         while True:
             try:
-                params = {'expansions': 'attachments.media_keys',
-                          'media.fields': 'preview_image_url,media_key,url',
-                          'tweet.fields': 'attachments,entities,created_at'}
+                params = {"follow": self.user}
+
+                auth = tweepy.OAuth1UserHandler(
+                    os.environ.get("ACCESS_TOKEN"), os.environ.get("ACCESS_SECRET"),
+                    os.environ.get("CONSUMER_KEY"), os.environ.get("CONSUMER_SECRET")
+                )
+
                 response = requests.get(
-                    "https://api.twitter.com/2/tweets/search/stream",
-                    headers=create_headers(), params=params, stream=True, timeout=timeout
+                    "https://stream.twitter.com/1.1/statuses/filter.json",
+                    headers=create_headers(),
+                    auth=auth.apply_auth(), params=params, stream=True, timeout=timeout
                 )
                 log('Subscribing to twitter updates. HTTP status:', response.status_code)
                 if response.status_code != 200:
