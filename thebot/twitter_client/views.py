@@ -1,7 +1,6 @@
 from django.shortcuts import render
 from .models import Keyword, Webhook, Follow
 
-from subprocess import check_call # to kill running script
 import os
 
 def index(request):
@@ -55,6 +54,12 @@ def index(request):
 
     keywords = Keyword.objects.all()
     webhooks = Webhook.objects.all()
-    userid = Follow.objects.all()[0].userid
+    userid = Follow.objects.all()
+
+    if not userid:
+        userid = "None"
+    else:
+        userid = userid[0].userid
+
     context = {"keywords": keywords, "webhooks": webhooks, "userid": userid}
     return render(request, "index.html", context)

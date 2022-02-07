@@ -186,8 +186,12 @@ class ElonBot:
             return
         while True:
             try:
-                user = Follow.objects.all()[0]
-                params = {"follow": user}
+                user = Follow.objects.all()
+                if not user:
+                    print("No user defined -> Add user from user interface")
+                    exit()
+
+                params = {"follow": user[0].userid}
 
                 auth = tweepy.OAuth1UserHandler(
                     settings.CONSUMER_KEY, settings.CONSUMER_SECRET,
