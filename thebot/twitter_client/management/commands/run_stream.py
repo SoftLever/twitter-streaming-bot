@@ -12,7 +12,7 @@ from unidecode import unidecode
 
 
 from django.core.management.base import BaseCommand
-from twitter_client.models import Keyword, Webhook
+from twitter_client.models import Keyword, Webhook, Follow
 from twitter_client.management.utils.twitter_utils import create_headers, reset_twitter_subscription_rules
 from twitter_client.management.utils.utils import log
 
@@ -34,7 +34,7 @@ from django.db import connection
 
 
 class ElonBot:
-    def __init__(self, user: str,
+    def __init__(self,
                  asset: str,
                  auto_buy_delay: float,
                  auto_sell_delay: float,
@@ -43,7 +43,6 @@ class ElonBot:
                  process_tweet_text: Optional[str],
                  dry_run: bool):
         self.dry_run = dry_run
-        self.user = user
         self.asset = asset
         self.auto_buy_delay = auto_buy_delay
         self.auto_sell_delay = auto_sell_delay
@@ -52,13 +51,6 @@ class ElonBot:
         self.process_tweet_text = process_tweet_text
         if not self.validate_env():
             return
-        log('Starting elon.py')
-        log('  User:', user)
-        log('  self.asset:', self.asset)
-        log('  Auto buy time:', auto_buy_delay)
-        log('  Auto sell time:', auto_sell_delay)
-        log('  Use image signal:', use_image_signal)
-        log('  Order size:', order_size)
 
     @staticmethod
     def get_image_text(uri: str) -> str:
@@ -104,15 +96,23 @@ class ElonBot:
 
 
     def process_tweet(self, tweet_json: str, utc_time):
+        process_start = time.perf_counter()
+
         tweet_json = json.loads(tweet_json)
         print("\n")
         log("Tweet received")
         # log("Tweet received\n", json.dumps(tweet_json, indent=4, sort_keys=True), "\n")
-        tweet_text = tweet_json['text']
-        image_url = (tweet_json.get('includes', {}).get('media', [])[0:1] or [{}])[0].get('url', '')
+        tweet_text = tweet_json.get('text', '')
+        image_url = (tweet_json.get('extended_entities', {}).get('media', [])[0:1] or [{}])[0].get('media_url', '')
+
         image_text = ''
         if self.use_image_signal:
+            start = time.perf_counter()
             image_text = ElonBot.get_image_text(image_url)
+            scan_time = time.perf_counter() - start
+        else:
+            scan_time = 0
+
         full_text = f'{tweet_text} {image_text}'
 
         keywords = list(Keyword.objects.filter(enabled=True).values_list('name', 'ticker'))
@@ -151,24 +151,29 @@ class ElonBot:
                 else:
                     log(f"Posted '{message}' to {url} (Response {R.status_code})")
 
-                # For debugging purposes
-                print(f"\nTIMING LOGS\nReceived timestamp (UTC): {utc_time}\nTweet timestamp (UTC): {tweet_time}")
-                print(f"Tweet took {timelapse} seconds to get to app")
-                webhook_time = R.elapsed.total_seconds()
-                print(f"Webhook responded in {webhook_time} seconds")
+                # For debugging purposes -> Indent this whole section to the left after confirming requirements
+                total_process_time = (time.perf_counter() - process_start) + timelapse
 
+                print(f"\nTIMING LOGS\nReceived timestamp (UTC): {utc_time}\nTweet timestamp (UTC): {tweet_time}")
+                print(f"Tweet took {timelapse} seconds to get to the app")
+
+                if image_text:
+                    print(f"Google took {scan_time} seconds to scan text from the image")
 
                 # Checking how much time it took to run the query
                 if connection.queries:
                     # Get the last two queries
                     query_time = float(connection.queries[-1].get("time")) + float(connection.queries[-2].get("time"))
-                    print(f"Retrieving keyword and webhook records took {query_time}")
+                    print(f"Retrieving keyword and webhook records took {query_time} seconds")
                 else:
                     query_time = 0
 
-                network_time = timelapse + webhook_time
+                webhook_time = R.elapsed.total_seconds()
+                print(f"Webhook responded in {webhook_time} seconds")
 
-                print(f"\nTOTAL SECONDS ELAPSED: { network_time + query_time}\n({network_time} on Twitter and webhook)")
+                network_time = timelapse + webhook_time + scan_time
+
+                print(f"\nTOTAL SECONDS ELAPSED: {total_process_time}\n({network_time} on Twitter,webhook and Google Vision)\n")
 
                 return
 
@@ -181,7 +186,12 @@ class ElonBot:
             return
         while True:
             try:
-                params = {"follow": self.user}
+                user = Follow.objects.all()
+                if not user:
+                    print("No user defined -> Add user from user interface")
+                    exit()
+
+                params = {"follow": user[0].userid}
 
                 auth = tweepy.OAuth1UserHandler(
                     settings.CONSUMER_KEY, settings.CONSUMER_SECRET,
@@ -193,6 +203,7 @@ class ElonBot:
                     headers=create_headers(),
                     auth=auth.apply_auth(), params=params, stream=True, timeout=timeout
                 )
+                response.connection.close()
                 log('Subscribing to twitter updates. HTTP status:', response.status_code)
                 if response.status_code != 200:
                     raise Exception("Cannot get stream (HTTP {}): {}".format(response.status_code, response.text))
@@ -211,8 +222,6 @@ class Command(BaseCommand):
     help = "Send data to webhooks using Twitter signal"
 
     def add_arguments(self, parser):
-        parser.add_argument('--user', help='Twitter user to follow. Example: elonmusk', required=True)
-
         parser.add_argument('--auto-buy-delay', type=float, help='Buy after auto-buy-delay seconds', default=10)
         parser.add_argument('--auto-sell-delay', type=float, help='Sell after auto-sell-delay seconds', default=60 * 5)
         parser.add_argument('--asset', default='USDT', help='asset to use to buy cryptocurrency. This is your "base" '
@@ -240,7 +249,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         bot = ElonBot(
-            options["user"],
             options["asset"],
             options["auto_buy_delay"],
             options["auto_sell_delay"],
