@@ -1,10 +1,14 @@
 from django.shortcuts import render
-from .models import Keyword, Webhook
+from .models import Keyword, Webhook, Follow
+
+from subprocess import check_call # to kill running script
+import os
 
 def index(request):
     if request.method == "POST":
         keyword = request.POST.get("keyword")
         url = request.POST.get("url")
+        userid = request.POST.get("userid")
 
         if keyword:
             ticker = request.POST.get("ticker")
@@ -22,6 +26,12 @@ def index(request):
                     url=url,
                     message=message
                 )
+        elif userid:
+            # Delete existing follow objects
+            Follow.objects.all().delete()
+            Follow.objects.get_or_create(
+                userid=userid
+            )
 
 
     keyword_id = request.GET.get("keyword_id")
@@ -45,5 +55,6 @@ def index(request):
 
     keywords = Keyword.objects.all()
     webhooks = Webhook.objects.all()
-    context = {"keywords": keywords, "webhooks": webhooks}
+    userid = Follow.objects.all()[0].userid
+    context = {"keywords": keywords, "webhooks": webhooks, "userid": userid}
     return render(request, "index.html", context)
