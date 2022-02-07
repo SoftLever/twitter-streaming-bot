@@ -112,3 +112,17 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+# Twitter
+CONSUMER_KEY = os.environ.get("CONSUMER_KEY")
+CONSUMER_SECRET = os.environ.get("CONSUMER_SECRET")
+ACCESS_TOKEN = os.environ.get("ACCESS_TOKEN")
+ACCESS_SECRET = os.environ.get("ACCESS_SECRET")
+
+# Google vision
+GOOGLE_APPLICATION_CREDENTIALS = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+
+# Webhooks
+DEFAULT_WEBHOOK = os.environ.get("DEFAULT_WEBHOOK")
+DEFAULT_MESSAGE = os.environ.get("DEFAULT_MESSAGE")

@@ -27,6 +27,11 @@ import requests
 
 import tweepy
 
+from django.conf import settings
+
+# For debugging query
+from django.db import connection
+
 
 class ElonBot:
     def __init__(self, user: str,
@@ -34,7 +39,6 @@ class ElonBot:
                  auto_buy_delay: float,
                  auto_sell_delay: float,
                  use_image_signal: bool,
-                 # margin_type: MarginType,
                  order_size: float,
                  process_tweet_text: Optional[str],
                  dry_run: bool):
@@ -81,20 +85,29 @@ class ElonBot:
             return ''
 
     def validate_env(self, verbose=False) -> bool:
-        google_test = not self.use_image_signal or ('GOOGLE_APPLICATION_CREDENTIALS' in os.environ)
+        twitter_test = (
+            settings.CONSUMER_KEY, settings.CONSUMER_SECRET,
+            settings.ACCESS_TOKEN, settings.ACCESS_SECRET
+        )
+
+        google_test = settings.GOOGLE_APPLICATION_CREDENTIALS
+
         if not google_test and verbose:
-            log('Please, provide GOOGLE_APPLICATION_CREDENTIALS environment variable. '
-                'Check https://github.com/vslaykovsky/elonbot for details')
-        twitter_test = 'TWITTER_BEARER_TOKEN' in os.environ
-        if not twitter_test and verbose:
-            log('Please, provide TWITTER_BEARER_TOKEN environment variable. '
-                'Check https://github.com/vslaykovsky/elonbot for details')
-        return google_test and twitter_test # and binance_test
+            log('Please, provide GOOGLE_APPLICATION_CREDENTIALS environment variable.')
+
+        if not all(twitter_test) and verbose:
+            log('Please, provide all the consumer keys and access keys for twitter.'
+                'Check ".env.sample" for a list of the required variables'
+            )
+
+        return google_test and twitter_test
 
 
-    def process_tweet(self, tweet_json: str):
+    def process_tweet(self, tweet_json: str, utc_time):
         tweet_json = json.loads(tweet_json)
-        log("Tweet received\n", json.dumps(tweet_json, indent=4, sort_keys=True), "\n")
+        print("\n")
+        log("Tweet received")
+        # log("Tweet received\n", json.dumps(tweet_json, indent=4, sort_keys=True), "\n")
         tweet_text = tweet_json['text']
         image_url = (tweet_json.get('includes', {}).get('media', [])[0:1] or [{}])[0].get('url', '')
         image_text = ''
@@ -109,39 +122,53 @@ class ElonBot:
             if re.search(keyword, t, flags=re.I) is not None:
                 log(f'Tweet matched pattern "{keyword}", buying corresponding ticker {ticker}')
 
-                utc_time = datetime.now(timezone.utc).replace(tzinfo=timezone.utc).timestamp()
-                tweet_time = datetime.strptime(tweet_json['created_at'], "%a %b %d %H:%M:%S %z %Y").timestamp()
+                tweet_time = int(tweet_json['timestamp_ms'])/1000
 
-                print(f"current system time (UTC): {utc_time}\ntweet time (UTC): {tweet_time}")
-
-                timelapse = math.ceil(utc_time - tweet_time)
+                timelapse = utc_time - tweet_time
+                timelapse_int = math.ceil(timelapse)
 
                 # Get necessary API endpoint
                 webhook = Webhook.objects.filter(
-                    timerange_lower__lte=timelapse,
-                    timerange_upper__gte=timelapse
+                    timerange_lower__lte=timelapse_int,
+                    timerange_upper__gte=timelapse_int
                 ).order_by("-timerange_lower")
 
                 if webhook:
                     url = webhook[0].url
                     message = webhook[0].message
-                    print(f"Range selected: {webhook[0].timerange_lower} to {webhook[0].timerange_upper}")
+                    log(f"Range selected: {webhook[0].timerange_lower} to {webhook[0].timerange_upper}")
                 else:
                     # if there is no record for this time range, run default webhook
-                    url = os.environ.get("DEFAULT_WEBHOOK")
-                    message = os.environ.get("DEFAULT_MESSAGE")
-                    print("Range selected: Default")
-
-                print(f"Seconds Elapsed: {timelapse}")
+                    url = settings.DEFAULT_WEBHOOK
+                    message = settings.DEFAULT_MESSAGE
+                    log("Range selected: Default")
 
                 # Make API call
-
                 R = requests.post(url, data=message)
 
                 if R.status_code != 200:
-                    print(f"{R.status_code}:Failed to post '{message}' to {url}")
+                    log(f"Failed to post '{message}' to {url} (Response {R.status_code})")
                 else:
-                    print(f"{R.status_code}:Posted '{message}' to {url}")
+                    log(f"Posted '{message}' to {url} (Response {R.status_code})")
+
+                # For debugging purposes
+                print(f"\nTIMING LOGS\nReceived timestamp (UTC): {utc_time}\nTweet timestamp (UTC): {tweet_time}")
+                print(f"Tweet took {timelapse} seconds to get to app")
+                webhook_time = R.elapsed.total_seconds()
+                print(f"Webhook responded in {webhook_time} seconds")
+
+
+                # Checking how much time it took to run the query
+                if connection.queries:
+                    # Get the last two queries
+                    query_time = float(connection.queries[-1].get("time")) + float(connection.queries[-2].get("time"))
+                    print(f"Retrieving keyword and webhook records took {query_time}")
+                else:
+                    query_time = 0
+
+                network_time = timelapse + webhook_time
+
+                print(f"\nTOTAL SECONDS ELAPSED: { network_time + query_time}\n({network_time} on Twitter and webhook)")
 
                 return
 
@@ -149,15 +176,16 @@ class ElonBot:
 
     def run(self, timeout: int = 24 * 3600) -> None:
         if self.process_tweet_text is not None:
-            self.process_tweet(self.process_tweet_text)
+            utc_time = datetime.now(timezone.utc).replace(tzinfo=timezone.utc).timestamp()
+            self.process_tweet(self.process_tweet_text, utc_time)
             return
         while True:
             try:
                 params = {"follow": self.user}
 
                 auth = tweepy.OAuth1UserHandler(
-                    os.environ.get("ACCESS_TOKEN"), os.environ.get("ACCESS_SECRET"),
-                    os.environ.get("CONSUMER_KEY"), os.environ.get("CONSUMER_SECRET")
+                    settings.CONSUMER_KEY, settings.CONSUMER_SECRET,
+                    settings.ACCESS_TOKEN, settings.ACCESS_SECRET
                 )
 
                 response = requests.get(
@@ -170,7 +198,8 @@ class ElonBot:
                     raise Exception("Cannot get stream (HTTP {}): {}".format(response.status_code, response.text))
                 for response_line in response.iter_lines():
                     if response_line:
-                        self.process_tweet(response_line)
+                        utc_time = datetime.now(timezone.utc).replace(tzinfo=timezone.utc).timestamp()
+                        self.process_tweet(response_line, utc_time)
             except Exception as ex:
                 log(ex, 'restarting socket')
                 time.sleep(60)
