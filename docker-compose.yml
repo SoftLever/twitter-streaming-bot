@@ -8,7 +8,7 @@ services:
       - .env
     command: gunicorn thebot.wsgi:application --bind 0.0.0.0:8000 --limit-request-line 0 --access-logfile gunicorn.log --workers=4
     ports:
-      - "8086:8000"
+      - "8586:8000"
 
   nginx:
     image: nginx:latest
