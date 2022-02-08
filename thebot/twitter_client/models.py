@@ -29,3 +29,10 @@ class Webhook(models.Model):
 
     def __str__(self):
         return self.url
+
+
+class Follow(models.Model):
+    userid = models.CharField(max_length=40)
+
+    def __str__(self):
+        return self.userid
