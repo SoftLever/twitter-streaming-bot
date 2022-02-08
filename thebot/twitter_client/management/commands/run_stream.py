@@ -200,7 +200,6 @@ class ElonBot:
 
                 response = requests.get(
                     "https://stream.twitter.com/1.1/statuses/filter.json",
-                    headers=create_headers(),
                     auth=auth.apply_auth(), params=params, stream=True, timeout=timeout
                 )
                 response.connection.close()
