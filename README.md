@@ -22,7 +22,7 @@
 
 **API Version 2**
 
-`sudo docker-compose exec web python manage.py run_stream --user=FeiginCraig --use-image-signal > /home/ubuntu/logs.log 2>&1 &`
+`sudo docker-compose exec web python manage.py run_stream --user=username --use-image-signal > /home/ubuntu/logs.log 2>&1 &`
 
 
 ## Changing filter stream
@@ -34,5 +34,8 @@ This has to be done every time you want to change the user to follow. For V1, en
 2. If a stream is already running, disconnect by killing the process running it. You can find the process id by running `ps aux | grep run_stream`. Then `sudo kill -9 <pid>`
 
 3. Finally, run the appropriate (as discussed above)
+
+
+**NOTE:** All the `docker-compose` commands have to be run in the project's root directory, `elonbot/`, where the compose file is located.
 
 
