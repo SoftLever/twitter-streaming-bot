@@ -1,6 +1,8 @@
 from django.shortcuts import render
 from .models import Keyword, Webhook, Follow
 
+from twitter_client.management.utils.twitter_utils import reset_twitter_subscription_rules
+
 import os
 
 def index(request):
@@ -31,6 +33,8 @@ def index(request):
             Follow.objects.get_or_create(
                 userid=userid
             )
+            # if V2:
+            # reset_twitter_subscription_rules(userid)
 
 
     keyword_id = request.GET.get("keyword_id")
