@@ -1,3 +1,5 @@
+**NOTE:** This project began as a fork of [elonbot](https://github.com/vslaykovsky/elonbot/blob/master/elonbot.py), but is now a web app with an almost entirely different purpose. It now serves a wider audience - individuals who want to keep track of what specific twitter accounts publish and invoke APIs based on keyword and timing.
+
 ## Running the app for the first time
 
 1. ssh into the server.
