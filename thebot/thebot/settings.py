@@ -14,7 +14,7 @@ SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-yrh^-dwcnjanju08mf+d6
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = int(os.environ.get("DEBUG", "0"))
 
-ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "127.0.0.1 localhost 3.136.220.110").split(" ")
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "54.161.10.211 3.136.220.110").split(" ")
 
 
 # Application definition
@@ -66,8 +66,12 @@ WSGI_APPLICATION = 'thebot.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': 'postgres',
+        'USER': 'postgres',
+        'PASSWORD': 'postgres',
+        'HOST': 'db',
+        'PORT': 5432,
     }
 }
 
