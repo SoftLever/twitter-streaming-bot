@@ -25,6 +25,9 @@ import math
 
 import requests
 
+# if V1:
+#    import tweepy
+
 from django.conf import settings
 
 # For debugging query
@@ -75,20 +78,28 @@ class ElonBot:
             return ''
 
     def validate_env(self, verbose=False) -> bool:
-        twitter_test = (
-            settings.CONSUMER_KEY, settings.CONSUMER_SECRET,
-            settings.ACCESS_TOKEN, settings.ACCESS_SECRET
-        )
+        # Add V2 twitter test here
+        twitter_test = settings.BEARER_TOKEN
+        
+        # if V1:
+        #twitter_test = (
+        #    settings.CONSUMER_KEY, settings.CONSUMER_SECRET,
+        #    settings.ACCESS_TOKEN, settings.ACCESS_SECRET
+        #)
 
         google_test = settings.GOOGLE_APPLICATION_CREDENTIALS
 
         if not google_test and verbose:
             log('Please, provide GOOGLE_APPLICATION_CREDENTIALS environment variable.')
-
-        if not all(twitter_test) and verbose:
-            log('Please, provide all the consumer keys and access keys for twitter.'
-                'Check ".env.sample" for a list of the required variables'
-            )
+        
+        if not twitter_test:
+          log("Please provide a twitter bearer token in the BEARER_TOKEN env variable.")
+        
+        # if V1:
+        # if not all(twitter_test) and verbose:
+        #    log('Please, provide all the consumer keys and access keys for twitter.'
+        #        'Check ".env.sample" for a list of the required variables'
+        #    )
 
         return google_test and twitter_test
 
@@ -97,9 +108,12 @@ class ElonBot:
         process_start = time.perf_counter()
 
         tweet_json = json.loads(tweet_json)
-
         print("\n")
         log("Tweet received")
+        # if V1
+        # tweet_text = tweet_json.get('text', '')
+        # image_url = (tweet_json.get('extended_entities', {}).get('media', [])[0:1] or [{}])[0].get('media_url', '')
+
         tweet_text = tweet_json['data']['text']
         image_url = (tweet_json.get('includes', {}).get('media', [])[0:1] or [{}])[0].get('url', '')
 
@@ -120,6 +134,9 @@ class ElonBot:
             t = unidecode(full_text)
             if re.search(keyword, t, flags=re.I) is not None:
                 log(f'Tweet matched pattern "{keyword}", buying corresponding ticker {ticker}')
+
+                # if V1:
+                #      tweet_time = int(tweet_json['timestamp_ms'])/1000
 
                 tweet_time = datetime.strptime(tweet_json['data']['created_at'], "%Y-%m-%dT%H:%M:%S.%fZ").timestamp()
 
@@ -143,7 +160,6 @@ class ElonBot:
                     log("Range selected: Default")
 
                 # Make API call
-
                 R = requests.post(url, data=message)
 
                 if R.status_code != 200:
@@ -180,27 +196,42 @@ class ElonBot:
         return None
 
     def run(self, timeout: int = 24 * 3600) -> None:
+        user = Follow.objects.all()
+        if not user:
+            print("No user defined -> Add user from user interface")
+            exit()
+        # if V2:
+        reset_twitter_subscription_rules(user[0].userid)
+
         if self.process_tweet_text is not None:
             utc_time = datetime.now(timezone.utc).replace(tzinfo=timezone.utc).timestamp()
             self.process_tweet(self.process_tweet_text, utc_time)
             return
 
-            user = Follow.objects.all()
-
-            if not user:
-                print("No user defined -> Add user from user interface")
-                exit()
-
-            reset_twitter_subscription_rules(user)
         while True:
             try:
-                params = {'expansions': 'attachments.media_keys',
-                          'media.fields': 'preview_image_url,media_key,url',
-                          'tweet.fields': 'attachments,entities,created_at'}
+                # if V1:
+                # params = {"follow": user[0].userid}
+                # if V1
+                # auth = tweepy.OAuth1UserHandler(
+                #     settings.CONSUMER_KEY, settings.CONSUMER_SECRET,
+                #     settings.ACCESS_TOKEN, settings.ACCESS_SECRET
+                # )
+                # else:
+                params = {
+                  'expansions': 'attachments.media_keys',
+                  'media.fields': 'preview_image_url,media_key,url',
+                  'tweet.fields': 'attachments,entities,created_at'
+                }
+                # if V1:
 
+                # response = requests.get(
+                #     "https://stream.twitter.com/1.1/statuses/filter.json",
+                #     auth=auth.apply_auth(), params=params, stream=True, timeout=timeout
+                # )
                 response = requests.get(
-                    "https://api.twitter.com/2/tweets/search/stream",
-                    headers=create_headers(), params=params, stream=True, timeout=timeout
+                  "https://api.twitter.com/2/tweets/search/stream",
+                  headers=create_headers(), params=params, stream=True, timeout=timeout
                 )
                 log('Subscribing to twitter updates. HTTP status:', response.status_code)
                 if response.status_code != 200:

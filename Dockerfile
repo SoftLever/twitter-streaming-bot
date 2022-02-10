@@ -10,8 +10,10 @@ WORKDIR $APP_HOME
 
 # Install pip packages
 ADD ./requirements.txt .
-RUN pip install -r requirements.txt
+
 RUN pip install gunicorn
+RUN pip install -r requirements.txt
+
 RUN rm requirements.txt
 
 # Copy code into Image
