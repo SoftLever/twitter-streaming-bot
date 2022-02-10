@@ -15,6 +15,7 @@ ntplib==0.4.0
 oauthlib==3.2.0
 proto-plus==1.19.9
 protobuf==3.19.4
+psycopg2-binary==2.9.3
 pyasn1==0.4.8
 pyasn1-modules==0.2.8
 requests==2.27.1
