@@ -133,3 +133,6 @@ dmypy.json
 
 # Google dev key
 credentials.json
+
+# Server configs
+nginx.conf

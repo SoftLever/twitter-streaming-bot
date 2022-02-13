@@ -1,10 +1,7 @@
-import argparse
-import json
-import os
 import re
+import json
 import sys
 import time
-from decimal import Decimal
 from typing import Dict, Optional
 
 import requests
@@ -17,38 +14,28 @@ from twitter_client.management.utils.twitter_utils import create_headers, reset_
 from twitter_client.management.utils.utils import log
 
 from datetime import datetime, timezone
-import ntplib
-
-import time
 
 import math
 
-import requests
-
-# if V1:
-#    import tweepy
 
 from django.conf import settings
 
 # For debugging query
 from django.db import connection
 
+TWITTER_VERSION = int(settings.TWITTER_VERSION)
+
+if TWITTER_VERSION == 1:
+   import tweepy
+
 
 class ElonBot:
     def __init__(self,
-                 asset: str,
-                 auto_buy_delay: float,
-                 auto_sell_delay: float,
                  use_image_signal: bool,
-                 order_size: float,
                  process_tweet_text: Optional[str],
                  dry_run: bool):
         self.dry_run = dry_run
-        self.asset = asset
-        self.auto_buy_delay = auto_buy_delay
-        self.auto_sell_delay = auto_sell_delay
         self.use_image_signal = use_image_signal
-        self.order_size = order_size
         self.process_tweet_text = process_tweet_text
         if not self.validate_env():
             return
@@ -78,14 +65,15 @@ class ElonBot:
             return ''
 
     def validate_env(self, verbose=False) -> bool:
-        # Add V2 twitter test here
-        twitter_test = settings.BEARER_TOKEN
-        
-        # if V1:
-        #twitter_test = (
-        #    settings.CONSUMER_KEY, settings.CONSUMER_SECRET,
-        #    settings.ACCESS_TOKEN, settings.ACCESS_SECRET
-        #)
+        if TWITTER_VERSION == 2:
+            twitter_test = settings.TWITTER_BEARER_TOKEN
+        else:
+            twitter_test = all(
+                (
+                   settings.CONSUMER_KEY, settings.CONSUMER_SECRET,
+                   settings.ACCESS_TOKEN, settings.ACCESS_SECRET
+               )
+            )
 
         google_test = settings.GOOGLE_APPLICATION_CREDENTIALS
 
@@ -93,13 +81,12 @@ class ElonBot:
             log('Please, provide GOOGLE_APPLICATION_CREDENTIALS environment variable.')
         
         if not twitter_test:
-          log("Please provide a twitter bearer token in the BEARER_TOKEN env variable.")
-        
-        # if V1:
-        # if not all(twitter_test) and verbose:
-        #    log('Please, provide all the consumer keys and access keys for twitter.'
-        #        'Check ".env.sample" for a list of the required variables'
-        #    )
+            if TWITTER_VERSION == 2:
+               log('Please, provide all the consumer keys and access keys for twitter.'
+                   'Check ".env.sample" for a list of the required variables'
+               )
+            else:
+               log("Please provide a twitter bearer token in the BEARER_TOKEN env variable.")
 
         return google_test and twitter_test
 
@@ -110,12 +97,14 @@ class ElonBot:
         tweet_json = json.loads(tweet_json)
         print("\n")
         log("Tweet received")
-        # if V1
-        # tweet_text = tweet_json.get('text', '')
-        # image_url = (tweet_json.get('extended_entities', {}).get('media', [])[0:1] or [{}])[0].get('media_url', '')
 
-        tweet_text = tweet_json['data']['text']
-        image_url = (tweet_json.get('includes', {}).get('media', [])[0:1] or [{}])[0].get('url', '')
+        if TWITTER_VERSION == 2:
+            tweet_text = tweet_json['data']['text']
+            image_url = (tweet_json.get('includes', {}).get('media', [])[0:1] or [{}])[0].get('url', '')
+        else:
+            tweet_text = tweet_json.get('text', '')
+            image_url = (tweet_json.get('extended_entities', {}).get('media', [])[0:1] or [{}])[0].get('media_url', '')
+
 
         image_text = ''
         if self.use_image_signal:
@@ -126,7 +115,6 @@ class ElonBot:
             scan_time = 0
 
         full_text = f'{tweet_text} {image_text}'
-        print(full_text)
 
         keywords = list(Keyword.objects.filter(enabled=True).values_list('name', 'ticker'))
 
@@ -135,10 +123,10 @@ class ElonBot:
             if re.search(keyword, t, flags=re.I) is not None:
                 log(f'Tweet matched pattern "{keyword}", buying corresponding ticker {ticker}')
 
-                # if V1:
-                #      tweet_time = int(tweet_json['timestamp_ms'])/1000
-
-                tweet_time = datetime.strptime(tweet_json['data']['created_at'], "%Y-%m-%dT%H:%M:%S.%fZ").timestamp()
+                if TWITTER_VERSION == 2:
+                    tweet_time = datetime.strptime(tweet_json['data']['created_at'], "%Y-%m-%dT%H:%M:%S.%fZ").timestamp()
+                else:
+                    tweet_time = int(tweet_json['timestamp_ms'])/1000
 
                 timelapse = utc_time - tweet_time
                 timelapse_int = math.ceil(timelapse)
@@ -195,13 +183,30 @@ class ElonBot:
 
         return None
 
-    def run(self, timeout: int = 24 * 3600) -> None:
+
+    def validate_user(self):
         user = Follow.objects.all()
+
         if not user:
             print("No user defined -> Add user from user interface")
             exit()
-        # if V2:
-        reset_twitter_subscription_rules(user[0].userid)
+        else:
+            if TWITTER_VERSION == 2:
+                pass
+            else:
+                try:
+                    int(user[0].userid)
+                except ValueError:
+                    print("No user defined -> Add user from user interface")
+                    exit()
+
+        return user[0].userid
+
+    def run(self, timeout: int = 24 * 3600) -> None:
+        user = self.validate_user()
+
+        if TWITTER_VERSION == 2:
+            reset_twitter_subscription_rules(user)
 
         if self.process_tweet_text is not None:
             utc_time = datetime.now(timezone.utc).replace(tzinfo=timezone.utc).timestamp()
@@ -210,30 +215,32 @@ class ElonBot:
 
         while True:
             try:
-                # if V1:
-                # params = {"follow": user[0].userid}
-                # if V1
-                # auth = tweepy.OAuth1UserHandler(
-                #     settings.CONSUMER_KEY, settings.CONSUMER_SECRET,
-                #     settings.ACCESS_TOKEN, settings.ACCESS_SECRET
-                # )
-                # else:
-                params = {
-                  'expansions': 'attachments.media_keys',
-                  'media.fields': 'preview_image_url,media_key,url',
-                  'tweet.fields': 'attachments,entities,created_at'
-                }
-                # if V1:
+                if TWITTER_VERSION == 2:
+                    params = {
+                      'expansions': 'attachments.media_keys',
+                      'media.fields': 'preview_image_url,media_key,url',
+                      'tweet.fields': 'attachments,entities,created_at'
+                    }
 
-                # response = requests.get(
-                #     "https://stream.twitter.com/1.1/statuses/filter.json",
-                #     auth=auth.apply_auth(), params=params, stream=True, timeout=timeout
-                # )
-                response = requests.get(
-                  "https://api.twitter.com/2/tweets/search/stream",
-                  headers=create_headers(), params=params, stream=True, timeout=timeout
-                )
+                    response = requests.get(
+                      "https://api.twitter.com/2/tweets/search/stream",
+                      headers=create_headers(), params=params, stream=True, timeout=timeout
+                    )
+                else:
+                    params = {"follow": user}
+
+                    auth = tweepy.OAuth1UserHandler(
+                        settings.CONSUMER_KEY, settings.CONSUMER_SECRET,
+                        settings.ACCESS_TOKEN, settings.ACCESS_SECRET
+                    )
+
+                    response = requests.get(
+                        "https://stream.twitter.com/1.1/statuses/filter.json",
+                        auth=auth.apply_auth(), params=params, stream=True, timeout=timeout
+                    )
+
                 log('Subscribing to twitter updates. HTTP status:', response.status_code)
+
                 if response.status_code != 200:
                     raise Exception("Cannot get stream (HTTP {}): {}".format(response.status_code, response.text))
                 for response_line in response.iter_lines():
@@ -251,22 +258,11 @@ class Command(BaseCommand):
     help = "Send data to webhooks using Twitter signal"
 
     def add_arguments(self, parser):
-        parser.add_argument('--auto-buy-delay', type=float, help='Buy after auto-buy-delay seconds', default=10)
-        parser.add_argument('--auto-sell-delay', type=float, help='Sell after auto-sell-delay seconds', default=60 * 5)
-        parser.add_argument('--asset', default='USDT', help='asset to use to buy cryptocurrency. This is your "base" '
-                                                            'cryptocurrency used to store your deposit. Reasonable options '
-                                                            'are: USDT, BUSD, USDC. You must convert your deposit to one '
-                                                            'of these currencies in order to use the script')
         parser.add_argument('--use-image-signal', action='store_true',
                             help='Extract text from attached twitter images using Google OCR. '
                                  'Requires correct value of GOOGLE_APPLICATION_CREDENTIALS environment variable.'
                                  'Check https://github.com/vslaykovsky/elonbot for more details',
                             default=False)
-        parser.add_argument('--order-size', help='Size of orders to execute. 1.0 means 100%% of the deposit; '
-                                                 '0.5 - 50%% of the deposit; 2.0 - 200%% of the deposit (marginal trade)'
-                                                 '"max" - maximum borrowable amount. max corresponds to  3x deposit '
-                                                 'for cross-margin account and up to 5x for isolated-margin account',
-                            default='max')
         parser.add_argument('--dry-run', action='store_true', help="Don't execute orders, only show debug output",
                             default=False)
         parser.add_argument('--process-tweet',
@@ -278,11 +274,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         bot = ElonBot(
-            options["asset"],
-            options["auto_buy_delay"],
-            options["auto_sell_delay"],
             options["use_image_signal"],
-            options["order_size"],
             options["process_tweet"],
             options["dry_run"]
         )

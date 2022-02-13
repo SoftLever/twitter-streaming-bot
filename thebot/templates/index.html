@@ -176,23 +176,23 @@
 
                 <div class="tab-pane fade" id="ex1-tabs-3" role="tabpanel" aria-labelledby="ex1-tab-3">
 
-                  <!--V1
-                  <p>Enter the user ID to follow. You can get this <a target="_blank" href="https://tweeterid.com">here</a></p>
-                  <p>Current user being followed is <a target="_blank" href="https://twitter.com/intent/user?user_id={{ userid }}/">{{ userid }}</a></p>
-                  -->
-
-                  <p>Enter the Twitter username to follow</p>
-                  <p>Current user being followed is <a target="_blank" href="https://twitter.com/{{ userid }}/">{{ userid }}</a></p>
+                  {% if version == 2 %}
+                    <p>Enter the Twitter username to follow</p>
+                    <p>Current user being followed is <a target="_blank" href="https://twitter.com/{{ userid }}/">{{ userid }}</a></p>
+                  {% else %}
+                    <p>Enter the user ID to follow. You can get this <a target="_blank" href="https://tweeterid.com">here</a></p>
+                    <p>Current user being followed is <a target="_blank" href="https://twitter.com/intent/user?user_id={{ userid }}/">{{ userid }}</a></p>                  
+                  {% endif %}
 
                   <form method = "POST" action = "" class="d-flex justify-content-center align-items-center mb-4">
                     {% csrf_token %}
                     <div class="form-outline flex-fill">
                       <input type="text" name="userid" required class="form-control" />
-
-                      <!--v1
-                      <label class="form-label" for="form2">User ID</label>
-                      -->
-                      <label class="form-label" for="form2">Username</label>
+                      {% if version == 2 %}
+                        <label class="form-label" for="form2">Username</label>
+                      {% else %}
+                        <label class="form-label" for="form2">User ID</label>
+                      {% endif %}
 
                     </div>
                     <button type="submit" class="btn btn-info ms-2">Save</button>

@@ -9,12 +9,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-yrh^-dwcnjanju08mf+d63-pa!@7&v12l*_y6z#2le9t5f%-x%")
+SECRET_KEY = os.environ.get("SECRET_KEY", "secret-key")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = int(os.environ.get("DEBUG", "0"))
 
-ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "54.161.10.211 3.136.220.110").split(" ")
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "127.0.0.1 localhost").split(" ")
 
 
 # Application definition
@@ -118,6 +118,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 # Twitter
+TWITTER_BEARER_TOKEN = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", "/home/credentials.json")
 CONSUMER_KEY = os.environ.get("CONSUMER_KEY")
 CONSUMER_SECRET = os.environ.get("CONSUMER_SECRET")
 ACCESS_TOKEN = os.environ.get("ACCESS_TOKEN")
@@ -129,3 +130,7 @@ GOOGLE_APPLICATION_CREDENTIALS = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"
 # Webhooks
 DEFAULT_WEBHOOK = os.environ.get("DEFAULT_WEBHOOK")
 DEFAULT_MESSAGE = os.environ.get("DEFAULT_MESSAGE")
+
+
+# Twitter API version
+TWITTER_VERSION = os.environ.get("TWITTER_VERSION", "2")

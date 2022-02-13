@@ -3,7 +3,10 @@ from .models import Keyword, Webhook, Follow
 
 from twitter_client.management.utils.twitter_utils import reset_twitter_subscription_rules
 
-import os
+from django.conf import settings
+
+
+TWITTER_VERSION = int(settings.TWITTER_VERSION)
 
 def index(request):
     if request.method == "POST":
@@ -33,8 +36,10 @@ def index(request):
             Follow.objects.get_or_create(
                 userid=userid
             )
-            # if V2:
-            # reset_twitter_subscription_rules(userid)
+
+            # Subscribe to the new user
+            if TWITTER_VERSION == 2:
+                reset_twitter_subscription_rules(userid)
 
 
     keyword_id = request.GET.get("keyword_id")
@@ -64,6 +69,14 @@ def index(request):
         userid = "None"
     else:
         userid = userid[0].userid
+        if TWITTER_VERSION == 2:
+            pass
+        else:
+            # For V1, we need an integer.
+            try:
+                int(userid)
+            except ValueError:
+                userid = "None"
 
-    context = {"keywords": keywords, "webhooks": webhooks, "userid": userid}
+    context = {"keywords": keywords, "webhooks": webhooks, "userid": userid, "version": TWITTER_VERSION}
     return render(request, "index.html", context)
