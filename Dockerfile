@@ -1,4 +1,4 @@
-FROM python:3.8.1-slim-buster
+FROM python:3.11.2-slim-buster
 
 ENV HOME /root
 ENV APP_HOME /application/

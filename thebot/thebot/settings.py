@@ -67,10 +67,10 @@ WSGI_APPLICATION = 'thebot.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'postgres',
-        'USER': 'postgres',
-        'PASSWORD': 'postgres',
-        'HOST': 'db',
+        'NAME': os.environ.get("POSTGRES_NAME"),
+        'USER': os.environ.get("POSTGRES_USER"),
+        'PASSWORD': os.environ.get("POSTGRES_PASSWORD"),
+        'HOST': os.environ.get("POSTGRES_HOST"),
         'PORT': 5432,
     }
 }
@@ -118,19 +118,4 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 # Twitter
-TWITTER_BEARER_TOKEN = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", "/home/credentials.json")
-CONSUMER_KEY = os.environ.get("CONSUMER_KEY")
-CONSUMER_SECRET = os.environ.get("CONSUMER_SECRET")
-ACCESS_TOKEN = os.environ.get("ACCESS_TOKEN")
-ACCESS_SECRET = os.environ.get("ACCESS_SECRET")
-
-# Google vision
-GOOGLE_APPLICATION_CREDENTIALS = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
-
-# Webhooks
-DEFAULT_WEBHOOK = os.environ.get("DEFAULT_WEBHOOK")
-DEFAULT_MESSAGE = os.environ.get("DEFAULT_MESSAGE")
-
-
-# Twitter API version
-TWITTER_VERSION = os.environ.get("TWITTER_VERSION", "2")
+TWITTER_BEARER_TOKEN = os.environ.get("TWITTER_BEARER_TOKEN")
