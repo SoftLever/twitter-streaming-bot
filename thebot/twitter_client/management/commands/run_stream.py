@@ -33,6 +33,6 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         bot = FollowBot(bearer_token=settings.TWITTER_BEARER_TOKEN, wait_on_rate_limit=True)
         bot.add_rules(
-            [StreamRule(value='Equity Bank')] # Will match any tweet containing both Equity and Bank
+            [StreamRule(value='@BankofAfrica_Ke OR \"Bank of Africa\" OR @AbsaKenya OR \"Absa Bank\" OR @KCBGroup OR \"KCB bank\" OR @KeEquityBank OR \"Equity Bank\" OR @FamilyBankKenya OR \"Family Bank\" OR @Coopbankenya OR \"Cooperative Bank\"')] # Will match any tweet containing both Equity and Bank
         )
         bot.filter(tweet_fields=["author_id", "id", "text", "created_at"])
